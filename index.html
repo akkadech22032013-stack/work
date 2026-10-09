@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบคำนวณค่าแรงคนงานขุดมันสำปะหลัง</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Tohoma', 'Segoe UI', sans-serif;
+        }
+        body {
+            background-color: #f0f4f1;
+            padding: 15px;
+            margin: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #2e7d32;
+            text-align: center;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            background-color: #2e7d32;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #1b5e20;
+        }
+        .worker-list {
+            margin-top: 20px;
+            border-top: 2px solid #e0e0e0;
+            padding-top: 15px;
+        }
+        .worker-item {
+            background-color: #f9f9f9;
+            border-left: 5px solid #2e7d32;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .worker-info p {
+            margin: 3px 0;
+        }
+        .total-box {
+            background-color: #e8f5e9;
+            border: 2px dashed #2e7d32;
+            padding: 15px;
+            text-align: center;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .total-box h3 {
+            margin: 0;
+            color: #1b5e20;
+            font-size: 22px;
+        }
+        .btn-delete {
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: auto;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🥔 เครื่องคิดเลขค่าแรงขุดมัน</h2>
+
+    <div class="form-group">
+        <label for="workerName">ชื่อคนงาน / ทีมงาน:</label>
+        <input type="text" id="workerName" placeholder="เช่น นายเขียว, ทีมงานพี่ต่อ">
+    </div>
+
+    <div class="form-group">
+        <label for="jobType">หน้าที่ / งานที่ทำ:</label>
+        <select id="jobType">
+            <option value="ขุด/ตัดหัวมัน">ขุด/ตัดหัวมัน</option>
+            <option value="โยนมันใส่ตัก/ขึ้นรถ">โยนมันใส่ตัก / ขึ้นรถ</option>
+            <option value="คนขับรถไถ/คีบมัน">คนขับรถไถ / คีบมัน</option>
+            <option value= "คนขับรถ/ส่งมัน">คนขับรถ/ส่งมัน</option>
+            <option value="เหมาทั่วไป">งานเหมาทั่วไป</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="calcType">รูปแบบการคิดเงิน:</label>
+        <select id="calcType" onchange="toggleUnitLabel()">
+            <option value="weight">คิดตามน้ำหนัก (บาท/ตัน)</option>
+            <option value="daily">คิดเป็นรายวัน (บาท/วัน)</option>
+            <option value="flat">คิดเป็นเหมาจ่าย (บาท)</option>
+        </select>
+    </div>
+
+    <div class="form-group" id="rateGroup">
+        <label id="rateLabel" for="rate">ราคาอัตราค่าจ้าง (บาท/ตัน):</label>
+        <input type="number" id="rate" placeholder="เช่น 120">
+    </div>
+
+    <div class="form-group" id="amountGroup">
+        <label id="amountLabel" for="amount">จำนวนน้ำหนักมัน (ตัน):</label>
+        <input type="number" id="amount" placeholder="เช่น 15">
+    </div>
+
+    <button onclick="addWorker()">+ เพิ่มรายการคนงาน</button>
+
+    <div class="worker-list" id="workerList">
+        <h3>รายการค่าแรงที่ต้องจ่าย:</h3>
+        <!-- รายการคนงานจะแสดงที่นี่ -->
+    </div>
+
+    <div class="total-box">
+        <h3>รวมค่าแรงทั้งหมด: <span id="grandTotal">0</span> บาท</h3>
+    </div>
+</div>
+
+<script>
+    let workers = [];
+
+    // เปลี่ยนข้อความตัวป้อนข้อมูลตามรูปแบบการคิดเงิน
+    function toggleUnitLabel() {
+        const calcType = document.getElementById('calcType').value;
+        const rateLabel = document.getElementById('rateLabel');
+        const amountLabel = document.getElementById('amountLabel');
+        const amountGroup = document.getElementById('amountGroup');
+
+        if (calcType === 'weight') {
+            rateLabel.textContent = 'ราคาอัตราค่าจ้าง (บาท/ตัน):';
+            amountLabel.textContent = 'จำนวนน้ำหนักมัน (ตัน):';
+            amountGroup.style.display = 'block';
+        } else if (calcType === 'daily') {
+            rateLabel.textContent = 'ค่าแรงต่อวัน (บาท/วัน):';
+            amountLabel.textContent = 'จำนวนวัน (วัน):';
+            amountGroup.style.display = 'block';
+        } else if (calcType === 'flat') {
+            rateLabel.textContent = 'จำนวนเงินเหมาจ่าย (บาท):';
+            amountGroup.style.display = 'none'; // เหมาจ่ายไม่ต้องใส่จำนวนหน่วย
+        }
+    }
+
+    function addWorker() {
+        const name = document.getElementById('workerName').value || 'คนงานไม่ระบุชื่อ';
+        const job = document.getElementById('jobType').value;
+        const calcType = document.getElementById('calcType').value;
+        const rate = parseFloat(document.getElementById('rate').value) || 0;
+        const amount = parseFloat(document.getElementById('amount').value) || 1;
+
+        if (rate <= 0) {
+            alert('กรุณากรอกราคาอัตราค่าจ้างให้ถูกต้องครับ');
+            return;
+        }
+
+        let totalPay = 0;
+        let detailText = '';
+
+        if (calcType === 'weight') {
+            totalPay = rate * amount;
+            detailText = `${amount} ตัน x ${rate} บาท/ตัน`;
+        } else if (calcType === 'daily') {
+            totalPay = rate * amount;
+            detailText = `${amount} วัน x ${rate} บาท/วัน`;
+        } else if (calcType === 'flat') {
+            totalPay = rate;
+            detailText = `เหมาจ่ายประจำงาน`;
+        }
+
+        const workerData = {
+            id: Date.now(),
+            name: name,
+            job: job,
+            detail: detailText,
+            totalPay: totalPay
+        };
+
+        workers.push(workerData);
+        updateUI();
+
+        // รีเซ็ตค่าในช่องกรอกบางช่อง
+        document.getElementById('workerName').value = '';
+    }
+
+    function removeWorker(id) {
+        workers = workers.filter(w => w.id !== id);
+        updateUI();
+    }
+
+    function updateUI() {
+        const listDiv = document.getElementById('workerList');
+        const grandTotalSpan = document.getElementById('grandTotal');
+        
+        // ล้างรายการเดิม
+        listDiv.innerHTML = '<h3>รายการค่าแรงที่ต้องจ่าย:</h3>';
+
+        let grandTotal = 0;
+
+        if (workers.length === 0) {
+            listDiv.innerHTML += '<p style="color:#777;">ยังไม่มีรายการ เพิ่มคนงานจากแบบฟอร์มด้านบนได้เลยครับ</p>';
+        }
+
+        workers.forEach((item) => {
+            grandTotal += item.totalPay;
+
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'worker-item';
+            itemDiv.innerHTML = `
+                <div class="worker-info">
+                    <p><strong>${item.name}</strong> (${item.job})</p>
+                    <p style="font-size:14px; color:#555;">${item.detail} = <b style="color:#2e7d32;">${item.totalPay.toLocaleString()} บาท</b></p>
+                </div>
+                <button class="btn-delete" onclick="removeWorker(${item.id})">ลบ</button>
+            `;
+            listDiv.appendChild(itemDiv);
+        });
+
+        grandTotalSpan.textContent = grandTotal.toLocaleString();
+    }
+</script>
+
+</body>
+</html>
